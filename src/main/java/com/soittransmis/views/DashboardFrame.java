@@ -162,8 +162,8 @@ public class DashboardFrame extends JFrame {
         tableAffaires.getColumnModel().getColumn(6).setCellRenderer(new ButtonRenderer(folderIcon));
         tableAffaires.getColumnModel().getColumn(6).setCellEditor(new ButtonEditor(this, folderIcon, tableAffaires, tableModel));
 
-        tableAffaires.getColumnModel().getColumn(6).setMaxWidth(90);
-        tableAffaires.getColumnModel().getColumn(6).setMinWidth(90);
+        tableAffaires.getColumnModel().getColumn(6).setMaxWidth(120);
+        tableAffaires.getColumnModel().getColumn(6).setMinWidth(120);
 
         tableAffaires.addMouseListener(new MouseAdapter() {
             @Override
