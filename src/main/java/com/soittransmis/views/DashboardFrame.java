@@ -154,9 +154,22 @@ public class DashboardFrame extends JFrame {
         };
         tableAffaires.getColumnModel().getColumn(4).setCellRenderer(statutRenderer);
 
-        DefaultTableCellRenderer leftRenderer = new DefaultTableCellRenderer();
-        leftRenderer.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
+        DefaultTableCellRenderer leftRenderer = new DefaultTableCellRenderer() {
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        if (value != null) {
+            String text = value.toString();
+            // Affiche le texte complet au survol de la souris
+            setToolTipText(text.isEmpty() ? null : text);
+        } else {
+            setToolTipText(null);
+        }
+        return c;
+    }
+};
+leftRenderer.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
 
         // Utilisation des classes externes ButtonRenderer et ButtonEditor
         tableAffaires.getColumnModel().getColumn(6).setCellRenderer(new ButtonRenderer(folderIcon));
