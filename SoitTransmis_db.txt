@@ -1,0 +1,65 @@
+-- =====================================================
+-- 1. TABLE : directions
+-- =====================================================
+CREATE TABLE directions (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(150) NOT NULL UNIQUE
+);
+
+-- =====================================================
+-- 2. TABLE : utilisateurs
+-- =====================================================
+CREATE TABLE utilisateurs (
+    id SERIAL PRIMARY KEY,
+    identifiant VARCHAR(50) NOT NULL UNIQUE,
+    mot_de_passe VARCHAR(255) NOT NULL,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    direction_id INTEGER REFERENCES directions(id) ON DELETE SET NULL,
+    date_creation TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    role VARCHAR(50)
+);
+
+-- =====================================================
+-- 3. TABLE : affaires (Liée à l'utilisateur qui l'a créée)
+-- =====================================================
+CREATE TABLE affaires (
+    id SERIAL PRIMARY KEY,
+    numero_affaire VARCHAR(50) NOT NULL UNIQUE,
+    libelle_litige VARCHAR(255),
+    statut VARCHAR(50),
+    cree_par INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
+    cree_le TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- 4. TABLE : opposants (Parties prenantes / Protagonistes)
+-- =====================================================
+CREATE TABLE opposants (
+    id SERIAL PRIMARY KEY,
+    affaire_id INTEGER NOT NULL REFERENCES affaires(id) ON DELETE CASCADE,
+    nom_prenom_ou_raison_sociale VARCHAR(200) NOT NULL,
+    ref_dossier VARCHAR(100),
+    ville VARCHAR(100),
+    section VARCHAR(50),
+    parcelle VARCHAR(50),
+    cree_le TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- 5. TABLE : demandes_inter_directions
+-- =====================================================
+CREATE TABLE demandes_inter_directions (
+    id SERIAL PRIMARY KEY,
+    affaire_id INTEGER REFERENCES affaires(id) ON DELETE CASCADE,
+    direction_expediteur_id INTEGER REFERENCES directions(id) ON DELETE SET NULL,
+    utilisateur_expediteur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
+    direction_destinataire_id INTEGER REFERENCES directions(id) ON DELETE SET NULL,
+    sujet VARCHAR(255),
+    message TEXT,
+    reponse TEXT,
+    statut VARCHAR(50),
+    date_envoi TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    date_reponse TIMESTAMP WITHOUT TIME ZONE,
+    utilisateur_repondeur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL
+);

@@ -1,0 +1,13 @@
+# Fichiers de build et NetBeans
+/build/
+/dist/
+/nbproject/private/
+/.nb-cache/
+/target/
+.DS_Store
+
+# Ignorer tout le contenu à l'intérieur du dossier uploads et de ses sous-dossiers
+uploads/**/*
+
+# Mais autoriser explicitement les fichiers .gitkeep pour conserver la structure des dossiers
+!uploads/**/.gitkeep
