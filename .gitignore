@@ -6,8 +6,11 @@
 /target/
 .DS_Store
 
-# Ignorer tout le contenu à l'intérieur du dossier uploads et de ses sous-dossiers
+# Ignorer tous les fichiers dans uploads et ses sous-dossiers
 uploads/**/*
 
-# Mais autoriser explicitement les fichiers .gitkeep pour conserver la structure des dossiers
+# MAIS autoriser explicitement le fichier COLLECTE D'INFORMATIONS.docx (où qu'il soit dans uploads)
+!uploads/**/COLLECTE D'INFORMATIONS.docx
+
+# Conserver la structure des dossiers vides si besoin
 !uploads/**/.gitkeep
