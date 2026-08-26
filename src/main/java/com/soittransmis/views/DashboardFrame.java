@@ -17,6 +17,9 @@ public class DashboardFrame extends JFrame {
     private JTable tableAffaires;
     private DefaultTableModel tableModel;
     private static ImageIcon folderIcon; 
+    
+    private JTextField txtRecherche;
+    private JComboBox<String> comboStatutFiltre;
 
     private static final String DB_URL = "jdbc:postgresql://localhost:5432/soit_transmis_db";
     private static final String DB_USER = "postgres";                                    
@@ -35,12 +38,39 @@ public class DashboardFrame extends JFrame {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         mainPanel.setBackground(new Color(245, 247, 250));
 
+        // --- Panneau Nord (Titre + Barre de recherche/filtres) ---
+        JPanel northPanel = new JPanel();
+        northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
+        northPanel.setBackground(new Color(245, 247, 250));
+
         JLabel lblTitre = new JLabel("Gestion et Suivi des Litiges Foncier-Administratives");
         lblTitre.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblTitre.setForeground(new Color(33, 37, 41));
-        lblTitre.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        mainPanel.add(lblTitre, BorderLayout.NORTH);
+        lblTitre.setAlignmentX(Component.LEFT_ALIGNMENT);
+        northPanel.add(lblTitre);
+        northPanel.add(Box.createVerticalStrut(15));
 
+        // Ligne de filtres (Recherche texte + Dropdown Statut)
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        filterPanel.setOpaque(false);
+        filterPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        txtRecherche = new JTextField(22);
+        txtRecherche.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtRecherche.putClientProperty("JTextField.placeholderText", "Rechercher par numéro, commune...");
+
+        comboStatutFiltre = new JComboBox<>(new String[]{"Tous les statuts", "En cours", "Traité et classé"});
+        comboStatutFiltre.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+
+        filterPanel.add(new JLabel("🔍 Recherche :"));
+        filterPanel.add(txtRecherche);
+        filterPanel.add(new JLabel("Statut :"));
+        filterPanel.add(comboStatutFiltre);
+
+        northPanel.add(filterPanel);
+        mainPanel.add(northPanel, BorderLayout.NORTH);
+
+        // --- Initialisation du Tableau ---
         String[] colonnes = {"Numéro affaire", "Commune", "Section", "Parcelle", "Statut", "Description", "Fichiers"};
         
         tableModel = new DefaultTableModel(new Object[][]{}, colonnes) {
@@ -52,6 +82,7 @@ public class DashboardFrame extends JFrame {
 
         tableAffaires = new JTable(tableModel);
 
+        // Chargement initial des données
         chargerDonneesAffaires();
         
         tableModel.addTableModelListener(e -> {
@@ -61,27 +92,23 @@ public class DashboardFrame extends JFrame {
             if (column == 5 && row >= 0) {
                 String nouveauTexte = (String) tableModel.getValueAt(row, 5);
                 String numeroAffaire = (String) tableModel.getValueAt(row, 0);
-
                 mettreAJourDescriptionEnBD(numeroAffaire, nouveauTexte);
             }
         });
 
         tableAffaires.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         
+        // Remplacement de l'action de la colonne 6 pour un clic direct
         tableAffaires.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int row = tableAffaires.rowAtPoint(e.getPoint());
                 int col = tableAffaires.columnAtPoint(e.getPoint());
                 
-                if (col == 5 && row != -1 && e.getClickCount() == 1) {
-                    if (tableAffaires.isCellEditable(row, col)) {
-                        tableAffaires.editCellAt(row, col);
-                        Component editorComp = tableAffaires.getEditorComponent();
-                        if (editorComp != null) {
-                            editorComp.requestFocusInWindow();
-                        }
-                    }
+                // Si l'utilisateur clique sur la colonne "Fichiers" (colonne 6)
+                if (col == 6 && row != -1 && e.getClickCount() == 1) {
+                    String numAffaire = (String) tableModel.getValueAt(row, 0);
+                    voirDocumentsAffaire(numAffaire);
                 }
             }
         });
@@ -140,44 +167,43 @@ public class DashboardFrame extends JFrame {
                 setFont(new Font("Segoe UI", Font.BOLD, 15));
 
                 if (value != null) {
-                String statut = value.toString().trim();
-                if (statut.equalsIgnoreCase("En cours")) {
-                    c.setForeground(new Color(40, 167, 69)); // Vert
-                } else if (statut.equalsIgnoreCase("Traité et classé")) {
-                    c.setForeground(new Color(220, 53, 69)); // Rouge
-                } else {
-                    c.setForeground(isSelected ? table.getSelectionForeground() : Color.BLACK);
+                    String statut = value.toString().trim();
+                    if (statut.equalsIgnoreCase("En cours")) {
+                        c.setForeground(new Color(40, 167, 69)); // Vert
+                    } else if (statut.equalsIgnoreCase("Traité et classé")) {
+                        c.setForeground(new Color(220, 53, 69)); // Rouge
+                    } else {
+                        c.setForeground(isSelected ? table.getSelectionForeground() : Color.BLACK);
+                    }
                 }
-            }
-            return c;
+                return c;
             }
         };
         tableAffaires.getColumnModel().getColumn(4).setCellRenderer(statutRenderer);
 
         DefaultTableCellRenderer leftRenderer = new DefaultTableCellRenderer() {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-        Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        if (value != null) {
-            String text = value.toString();
-            // Affiche le texte complet au survol de la souris
-            setToolTipText(text.isEmpty() ? null : text);
-        } else {
-            setToolTipText(null);
-        }
-        return c;
-    }
-};
-leftRenderer.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (value != null) {
+                    String text = value.toString();
+                    setToolTipText(text.isEmpty() ? null : text);
+                } else {
+                    setToolTipText(null);
+                }
+                return c;
+            }
+        };
+        leftRenderer.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
 
-        // Utilisation des classes externes ButtonRenderer et ButtonEditor
+        // Boutons actions (Fichiers)
         tableAffaires.getColumnModel().getColumn(6).setCellRenderer(new ButtonRenderer(folderIcon));
         tableAffaires.getColumnModel().getColumn(6).setCellEditor(new ButtonEditor(this, folderIcon, tableAffaires, tableModel));
-
         tableAffaires.getColumnModel().getColumn(6).setMaxWidth(120);
         tableAffaires.getColumnModel().getColumn(6).setMinWidth(120);
 
+        // Double-clic pour ouvrir les détails
         tableAffaires.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -187,7 +213,6 @@ tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
                         String numAffaire = (String) tableModel.getValueAt(ligneSelectionnee, 0);
                         String commune = (String) tableModel.getValueAt(ligneSelectionnee, 1);
                         String description = (String) tableModel.getValueAt(ligneSelectionnee, 5);
-
                         ouvrirDetailsAffaire(numAffaire, commune, description);
                     }
                 }
@@ -198,12 +223,23 @@ tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(190, 195, 200), 1));
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
+        // Pied de page explicatif
         JLabel lblInfo = new JLabel("💡 Astuce : Double-cliquez sur une ligne pour afficher les détails. Cliquez sur l'icône dossier 📁 pour uploader des fichiers.");
         lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblInfo.setForeground(new Color(90, 100, 110));
         mainPanel.add(lblInfo, BorderLayout.SOUTH);
 
         add(mainPanel);
+
+        // --- Écouteurs pour déclencher le filtrage dynamique en temps réel ---
+        txtRecherche.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                chargerDonneesAffaires();
+            }
+        });
+
+        comboStatutFiltre.addActionListener(e -> chargerDonneesAffaires());
     }
 
     private void chargerIconeDossier() {
@@ -218,33 +254,56 @@ tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
     }
 
     private void chargerDonneesAffaires() {
-        String query = "SELECT DISTINCT ON (a.numero_affaire) " +
-                       "a.numero_affaire, " +
-                       "a.description, " +
-                       "a.statut, " +
-                       "o.ville, " +
-                       "o.section, " +
-                       "o.parcelle " +
-                       "FROM affaires a " +
-                       "LEFT JOIN opposants o ON a.id = o.affaire_id " +
-                       "ORDER BY a.numero_affaire";
+        StringBuilder query = new StringBuilder(
+            "SELECT DISTINCT ON (a.numero_affaire) " +
+            "a.numero_affaire, a.description, a.statut, o.ville, o.section, o.parcelle " +
+            "FROM affaires a " +
+            "LEFT JOIN opposants o ON a.id = o.affaire_id WHERE 1=1"
+        );
+
+        String texteRecherche = (txtRecherche != null) ? txtRecherche.getText().trim() : "";
+        String statutSelectionne = (comboStatutFiltre != null) ? (String) comboStatutFiltre.getSelectedItem() : "Tous les statuts";
+
+        if (!texteRecherche.isEmpty()) {
+            query.append(" AND (a.numero_affaire ILIKE ? OR o.ville ILIKE ? OR a.description ILIKE ?)");
+        }
+
+        if (statutSelectionne != null && !statutSelectionne.equals("Tous les statuts")) {
+            query.append(" AND a.statut = ?");
+        }
+
+        query.append(" ORDER BY a.numero_affaire");
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
 
-            tableModel.setRowCount(0);
+            int paramIndex = 1;
+            if (!texteRecherche.isEmpty()) {
+                String motif = "%" + texteRecherche + "%";
+                pstmt.setString(paramIndex++, motif);
+                pstmt.setString(paramIndex++, motif);
+                pstmt.setString(paramIndex++, motif);
+            }
+            if (statutSelectionne != null && !statutSelectionne.equals("Tous les statuts")) {
+                pstmt.setString(paramIndex++, statutSelectionne);
+            }
 
-            while (rs.next()) {
-                Vector<Object> row = new Vector<>();
-                row.add(rs.getString("numero_affaire")); 
-                row.add(rs.getString("ville"));          
-                row.add(rs.getString("section"));        
-                row.add(rs.getString("parcelle"));       
-                row.add(rs.getString("statut"));         
-                row.add(rs.getString("description"));    
-                row.add("Ouvrir");                       
-                tableModel.addRow(row);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (tableModel != null) {
+                    tableModel.setRowCount(0);
+
+                    while (rs.next()) {
+                        Vector<Object> row = new Vector<>();
+                        row.add(rs.getString("numero_affaire")); 
+                        row.add(rs.getString("ville"));          
+                        row.add(rs.getString("section"));        
+                        row.add(rs.getString("parcelle"));       
+                        row.add(rs.getString("statut"));         
+                        row.add(rs.getString("description"));    
+                        row.add("Ouvrir");                       
+                        tableModel.addRow(row);
+                    }
+                }
             }
 
         } catch (SQLException e) {
@@ -353,30 +412,46 @@ tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
     public void voirDocumentsAffaire(String numeroAffaire) {
     File dossierAffaire = new File("uploads/" + numeroAffaire);
     
+    // Vérifier si le dossier existe et contient des fichiers
     if (!dossierAffaire.exists() || dossierAffaire.listFiles() == null || dossierAffaire.listFiles().length == 0) {
         JOptionPane.showMessageDialog(this, 
-            "Aucun document trouvé pour l'affaire : " + numeroAffaire, 
+            "Aucun document PDF trouvé pour l'affaire : " + numeroAffaire, 
             "Documents", 
             JOptionPane.INFORMATION_MESSAGE);
         return;
     }
 
-    // Récupérer la liste des fichiers du dossier
     File[] fichiers = dossierAffaire.listFiles();
     
-    // S'il n'y a qu'un seul fichier, on l'ouvre directement
-    if (fichiers.length == 1) {
-        ouvrirFichierSysteme(fichiers[0]);
+    // Filtrer pour ne garder que les fichiers PDF (optionnel mais recommandé)
+    java.util.List<File> fichiersPdf = new java.util.ArrayList<>();
+    for (File f : fichiers) {
+        if (f.getName().toLowerCase().endsWith(".pdf")) {
+            fichiersPdf.add(f);
+        }
+    }
+
+    if (fichiersPdf.isEmpty()) {
+        JOptionPane.showMessageDialog(this, 
+            "Aucun fichier PDF n'est présent dans le dossier de cette affaire.", 
+            "Fichiers introuvables", 
+            JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    // S'il n'y a qu'un seul PDF, on l'ouvre instantanément à l'écran
+    if (fichiersPdf.size() == 1) {
+        ouvrirFichierSysteme(fichiersPdf.get(0));
     } else {
-        // S'il y a plusieurs fichiers, on propose une liste déroulante ou une boîte de choix
+        // S'il y a plusieurs PDF, on affiche une boîte de dialogue pour choisir lequel ouvrir
         File fichierChoisi = (File) JOptionPane.showInputDialog(
             this,
-            "Sélectionnez le document à ouvrir :",
+            "Sélectionnez le document PDF à afficher :",
             "Documents de l'affaire " + numeroAffaire,
             JOptionPane.QUESTION_MESSAGE,
             null,
-            fichiers,
-            fichiers[0]
+            fichiersPdf.toArray(),
+            fichiersPdf.get(0)
         );
         
         if (fichierChoisi != null) {
@@ -385,25 +460,24 @@ tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
     }
 }
 
-// Méthode utilitaire pour ouvrir un fichier avec le programme par défaut du système (Windows, etc.)
-private void ouvrirFichierSysteme(File fichier) {
-    if (Desktop.isDesktopSupported()) {
-        try {
-            Desktop.getDesktop().open(fichier);
-        } catch (Exception e) {
+    private void ouvrirFichierSysteme(File fichier) {
+        if (Desktop.isDesktopSupported()) {
+            try {
+                Desktop.getDesktop().open(fichier);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Impossible d'ouvrir le fichier :\n" + e.getMessage(), 
+                    "Erreur d'ouverture", 
+                    JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
+            }
+        } else {
             JOptionPane.showMessageDialog(this, 
-                "Impossible d'ouvrir le fichier :\n" + e.getMessage(), 
-                "Erreur d'ouverture", 
+                "La fonction d'ouverture de fichier n'est pas supportée sur votre système.", 
+                "Erreur", 
                 JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
         }
-    } else {
-        JOptionPane.showMessageDialog(this, 
-            "La fonction d'ouverture de fichier n'est pas supportée sur votre système.", 
-            "Erreur", 
-            JOptionPane.ERROR_MESSAGE);
     }
-}
     
     public void gererUploadFichier(String numeroAffaire) {
         JFileChooser fileChooser = new JFileChooser();
