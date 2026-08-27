@@ -316,51 +316,292 @@ public class DashboardFrame extends JFrame {
     }
 
     private void ouvrirDetailsAffaire(String numAffaire, String commune, String description) {
-        JDialog dialogDetails = new JDialog(this, "Détails de l'affaire : " + numAffaire, true);
-        dialogDetails.setSize(550, 450);
-        dialogDetails.setLocationRelativeTo(this);
+    JDialog dialogDetails = new JDialog(this, "Détails de l'affaire : " + numAffaire, true);
+    dialogDetails.setSize(850, 600);
+    dialogDetails.setLocationRelativeTo(this);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        panel.setBackground(Color.WHITE);
+    // Panneau principal au design clair et professionnel
+    JPanel panelPrincipal = new JPanel(new BorderLayout(0, 15));
+    panelPrincipal.setBackground(new Color(245, 247, 250));
+    panelPrincipal.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JLabel lblTitreDetail = new JLabel("Dossier : " + numAffaire);
-        lblTitreDetail.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblTitreDetail.setForeground(new Color(13, 110, 253));
-        panel.add(lblTitreDetail);
-        panel.add(Box.createVerticalStrut(15));
+    // --- EN-TÊTE CLAIR ET STRUCTURÉ ---
+    JPanel panelHeader = new JPanel();
+    panelHeader.setLayout(new BoxLayout(panelHeader, BoxLayout.Y_AXIS));
+    panelHeader.setOpaque(false);
 
-        JLabel lblCommune = new JLabel("📍 Commune : " + (commune != null ? commune : "N/A"));
-        lblCommune.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        panel.add(lblCommune);
-        panel.add(Box.createVerticalStrut(8));
-        
-        JLabel lblDesc = new JLabel("📝 Description : " + (description != null ? description : "N/A"));
-        lblDesc.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        panel.add(lblDesc);
-        
-        panel.add(Box.createVerticalStrut(20));
-        
-        JLabel lblProtagonistesTitre = new JLabel("👥 Parties prenantes (Opposants) :");
-        lblProtagonistesTitre.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        panel.add(lblProtagonistesTitre);
-        panel.add(Box.createVerticalStrut(10));
-        
-        DefaultListModel<String> listModelProtagonistes = new DefaultListModel<>();
-        chargerOpposantsPourAffaire(numAffaire, listModelProtagonistes);
+    JLabel lblTitreDetail = new JLabel("Dossier : " + numAffaire);
+    lblTitreDetail.setFont(new Font("Segoe UI", Font.BOLD, 22));
+    lblTitreDetail.setForeground(new Color(33, 37, 41));
+    panelHeader.add(lblTitreDetail);
+    panelHeader.add(Box.createVerticalStrut(8));
 
-        JList<String> listeProtagonistes = new JList<>(listModelProtagonistes);
-        listeProtagonistes.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        listeProtagonistes.setFixedCellHeight(35);
-        
-        JScrollPane scrollProtagonistes = new JScrollPane(listeProtagonistes);
-        scrollProtagonistes.setPreferredSize(new Dimension(480, 110));
-        panel.add(scrollProtagonistes);
+    JLabel lblInfos = new JLabel("<html><b>Commune :</b> " + (commune != null ? commune : "N/A") + 
+                                 " &nbsp;&nbsp;|&nbsp;&nbsp; <b>Description :</b> " + (description != null ? description : "N/A") + "</html>");
+    lblInfos.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+    lblInfos.setForeground(new Color(108, 117, 125));
+    panelHeader.add(lblInfos);
 
-        dialogDetails.add(panel);
-        dialogDetails.setVisible(true);
+    panelPrincipal.add(panelHeader, BorderLayout.NORTH);
+
+    // --- ZONE DE TRAVAIL LIBRE (Layout Null pour déplacement libre dans toutes les directions) ---
+    JPanel panelCentre = new JPanel(null); // Layout null pour positionnement libre absolu
+    panelCentre.setBackground(Color.WHITE);
+    panelCentre.setBorder(BorderFactory.createTitledBorder(
+        BorderFactory.createLineBorder(new Color(206, 212, 218), 1),
+        " Parties prenantes (Glissez les cartes librement dans le cadre) ",
+        javax.swing.border.TitledBorder.LEFT,
+        javax.swing.border.TitledBorder.TOP,
+        new Font("Segoe UI", Font.BOLD, 13),
+        new Color(73, 80, 87)
+    ));
+
+    // Chargement et positionnement initial des cartes libres
+    chargerOpposantsCartesLibres(numAffaire, panelCentre);
+
+    panelPrincipal.add(panelCentre, BorderLayout.CENTER);
+
+    dialogDetails.add(panelPrincipal);
+    dialogDetails.setVisible(true);
+}
+
+// Méthode de génération des cartes avec déplacement libre (X et Y) à la souris
+private void chargerOpposantsCartesLibres(String numeroAffaire, JPanel containerLibre) {
+    String query = "SELECT o.nom_prenom_ou_raison_sociale, o.ref_dossier " +
+                   "FROM opposants o " +
+                   "JOIN affaires a ON o.affaire_id = a.id " +
+                   "WHERE a.numero_affaire = ?";
+
+    try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+         PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+        pstmt.setString(1, numeroAffaire);
+        try (ResultSet rs = pstmt.executeQuery()) {
+            boolean hasData = false;
+            int x = 20;
+            int y = 35;
+            int index = 0;
+
+            while (rs.next()) {
+                hasData = true;
+                String nom = rs.getString("nom_prenom_ou_raison_sociale");
+                String ref = rs.getString("ref_dossier");
+
+                // Création de la carte avec bordure en tirets
+                JPanel carte = new JPanel() {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        super.paintComponent(g);
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        
+                        g2.setColor(Color.WHITE);
+                        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                        
+                        float[] dashPattern = {6f, 6f};
+                        g2.setStroke(new java.awt.BasicStroke(1.5f, java.awt.BasicStroke.CAP_BUTT, java.awt.BasicStroke.JOIN_MITER, 10.0f, dashPattern, 0.0f));
+                        g2.setColor(new Color(173, 181, 189));
+                        g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 10, 10);
+                        
+                        g2.dispose();
+                    }
+                };
+                carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
+                carte.setBounds(x, y, 245, 125);
+                carte.setOpaque(false);
+                carte.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+                carte.setCursor(new Cursor(Cursor.DEFAULT_CURSOR)); // Curseur par défaut pour permettre la sélection de texte
+
+                JLabel lblTiret = new JLabel("- - - - - - - - - - - - - - - - -");
+                lblTiret.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                lblTiret.setForeground(new Color(134, 142, 150));
+                lblTiret.setAlignmentX(Component.LEFT_ALIGNMENT);
+                carte.add(lblTiret);
+                carte.add(Box.createVerticalStrut(4));
+
+                // --- CHAMPS SÉLECTIONNABLES POUR LE COPIER / COLLER ---
+                JTextField txtNom = new JTextField(nom);
+                txtNom.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                txtNom.setForeground(new Color(33, 37, 41));
+                txtNom.setEditable(false);
+                txtNom.setBorder(null);
+                txtNom.setOpaque(false);
+                txtNom.setAlignmentX(Component.LEFT_ALIGNMENT);
+                carte.add(txtNom);
+                carte.add(Box.createVerticalStrut(2));
+
+                JTextField txtRef = new JTextField("Réf : " + (ref != null ? ref : "N/A"));
+                txtRef.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+                txtRef.setForeground(new Color(108, 117, 125));
+                txtRef.setEditable(false);
+                txtRef.setBorder(null);
+                txtRef.setOpaque(false);
+                txtRef.setAlignmentX(Component.LEFT_ALIGNMENT);
+                carte.add(txtRef);
+
+                // --- GESTION DU DÉPLACEMENT LIBRE ET DU FOCUS CLAVIER ---
+                // Le déplacement reste actif si on clique sur les zones vides de la carte,
+                // mais le texte garde la priorité pour la sélection (Ctrl+C).
+                MouseAdapter moveOrSelect = new MouseAdapter() {
+                    private int mouseX, mouseY;
+
+                    @Override
+                    public void mousePressed(MouseEvent e) {
+                        mouseX = e.getX();
+                        mouseY = e.getY();
+                        containerLibre.setComponentZOrder(carte, 0);
+                    }
+
+                    @Override
+                    public void mouseDragged(MouseEvent e) {
+                        // Empêche le glisser-déposer si l'utilisateur est en train de surligner du texte avec la souris
+                        if (!txtNom.getCaret().isSelectionVisible() && !txtRef.getCaret().isSelectionVisible()) {
+                            int nouveauX = carte.getX() + (e.getX() - mouseX);
+                            int nouveauY = carte.getY() + (e.getY() - mouseY);
+                            carte.setLocation(nouveauX, nouveauY);
+                            containerLibre.revalidate();
+                            containerLibre.repaint();
+                        }
+                    }
+                };
+
+                carte.addMouseListener(moveOrSelect);
+                carte.addMouseMotionListener(moveOrSelect);
+                
+                // Propagation aux champs internes pour un déplacement fluide global
+                txtNom.addMouseListener(moveOrSelect);
+                txtNom.addMouseMotionListener(moveOrSelect);
+                txtRef.addMouseListener(moveOrSelect);
+                txtRef.addMouseMotionListener(moveOrSelect);
+
+                containerLibre.add(carte);
+
+                x += 270;
+                index++;
+                if (index % 2 == 0) {
+                    x = 20;
+                    y += 145;
+                }
+            }
+
+            if (!hasData) {
+                JLabel lblAucun = new JLabel("Aucun opposant enregistré pour cette affaire.");
+                lblAucun.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+                lblAucun.setForeground(new Color(108, 117, 125));
+                lblAucun.setBounds(20, 30, 300, 25);
+                containerLibre.add(lblAucun);
+            }
+        }
+
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(null, "Erreur de chargement des opposants.", "Erreur SQL", JOptionPane.ERROR_MESSAGE);
+        e.printStackTrace();
     }
+}
+
+// Méthode de génération des cartes avec interactivité de déplacement à la souris
+private void chargerOpposantsCartesMobiles(String numeroAffaire, JPanel containerCartes) {
+    String query = "SELECT o.nom_prenom_ou_raison_sociale, o.ref_dossier " +
+                   "FROM opposants o " +
+                   "JOIN affaires a ON o.affaire_id = a.id " +
+                   "WHERE a.numero_affaire = ?";
+
+    try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+         PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+        pstmt.setString(1, numeroAffaire);
+        try (ResultSet rs = pstmt.executeQuery()) {
+            boolean hasData = false;
+            while (rs.next()) {
+                hasData = true;
+                String nom = rs.getString("nom_prenom_ou_raison_sociale");
+                String ref = rs.getString("ref_dossier");
+
+                // Création de la carte visuelle style "Netflix"
+                JPanel carte = new JPanel() {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        super.paintComponent(g);
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        g2.setColor(new Color(32, 38, 52));
+                        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                        g2.setColor(new Color(70, 130, 255)); // Bordure bleutée interactive
+                        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+                        g2.dispose();
+                    }
+                };
+                carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
+                carte.setPreferredSize(new Dimension(220, 130));
+                carte.setOpaque(false);
+                carte.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+                carte.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+                JLabel lblBadge = new JLabel("🖱️ Glisser pour déplacer");
+                lblBadge.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                lblBadge.setForeground(new Color(13, 110, 253));
+                carte.add(lblBadge);
+                carte.add(Box.createVerticalStrut(8));
+
+                JLabel lblNom = new JLabel("<html><div style='width:180px;'><b>" + nom + "</b></div></html>");
+                lblNom.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                lblNom.setForeground(Color.WHITE);
+                carte.add(lblNom);
+                carte.add(Box.createVerticalStrut(6));
+
+                JLabel lblRef = new JLabel("Réf : " + (ref != null ? ref : "N/A"));
+                lblRef.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+                lblRef.setForeground(new Color(150, 165, 185));
+                carte.add(lblRef);
+
+                // --- LOGIQUE DE DÉPLACEMENT (Drag & Drop des cartes dans le conteneur) ---
+                MouseAdapter dragController = new MouseAdapter() {
+                    private int pointX, pointY;
+
+                    @Override
+                    public void mousePressed(MouseEvent e) {
+                        pointX = e.getX();
+                        pointY = e.getY();
+                        containerCartes.setComponentZOrder(carte, 0); // Amène la carte au premier plan pendant le déplacement
+                    }
+
+                    @Override
+                    public void mouseDragged(MouseEvent e) {
+                        int currentX = carte.getX() + e.getX() - pointX;
+                        int currentY = carte.getY() + e.getY() - pointY;
+                        
+                        // Permet de réordonner visuellement en changeant l'index dans le FlowLayout
+                        int indexCourant = java.util.Arrays.asList(containerCartes.getComponents()).indexOf(carte);
+                        int nouvellePosition = Math.max(0, Math.min(containerCartes.getComponentCount() - 1, currentX / 230));
+                        
+                        if (indexCourant != nouvellePosition && nouvellePosition >= 0) {
+                            containerCartes.remove(carte);
+                            containerCartes.add(carte, nouvellePosition);
+                            containerCartes.revalidate();
+                            containerCartes.repaint();
+                        }
+                    }
+                };
+
+                carte.addMouseListener(dragController);
+                carte.addMouseMotionListener(dragController);
+
+                containerCartes.add(carte);
+            }
+
+            if (!hasData) {
+                JLabel lblAucun = new JLabel("  Aucun opposant enregistré pour cette affaire.");
+                lblAucun.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+                lblAucun.setForeground(new Color(150, 165, 185));
+                containerCartes.add(lblAucun);
+            }
+        }
+
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(this, "Erreur de chargement des opposants.", "Erreur SQL", JOptionPane.ERROR_MESSAGE);
+        e.printStackTrace();
+    }
+}
 
     private void chargerOpposantsPourAffaire(String numeroAffaire, DefaultListModel<String> listModel) {
         String query = "SELECT o.nom_prenom_ou_raison_sociale, o.ref_dossier " +
@@ -410,20 +651,21 @@ public class DashboardFrame extends JFrame {
     }
     
     public void voirDocumentsAffaire(String numeroAffaire) {
-    File dossierAffaire = new File("uploads/" + numeroAffaire);
+    File dossierAffaire = new File("uploads/" + numeroAffaire + "/_commun");
     
-    // Vérifier si le dossier existe et contient des fichiers
+    if (!dossierAffaire.exists()) {
+        dossierAffaire = new File("uploads/" + numeroAffaire);
+    }
+    
     if (!dossierAffaire.exists() || dossierAffaire.listFiles() == null || dossierAffaire.listFiles().length == 0) {
         JOptionPane.showMessageDialog(this, 
-            "Aucun document PDF trouvé pour l'affaire : " + numeroAffaire, 
+            "Aucun document trouvé pour l'affaire : " + numeroAffaire, 
             "Documents", 
             JOptionPane.INFORMATION_MESSAGE);
         return;
     }
 
     File[] fichiers = dossierAffaire.listFiles();
-    
-    // Filtrer pour ne garder que les fichiers PDF (optionnel mais recommandé)
     java.util.List<File> fichiersPdf = new java.util.ArrayList<>();
     for (File f : fichiers) {
         if (f.getName().toLowerCase().endsWith(".pdf")) {
@@ -439,25 +681,84 @@ public class DashboardFrame extends JFrame {
         return;
     }
 
-    // S'il n'y a qu'un seul PDF, on l'ouvre instantanément à l'écran
     if (fichiersPdf.size() == 1) {
         ouvrirFichierSysteme(fichiersPdf.get(0));
     } else {
-        // S'il y a plusieurs PDF, on affiche une boîte de dialogue pour choisir lequel ouvrir
-        File fichierChoisi = (File) JOptionPane.showInputDialog(
-            this,
-            "Sélectionnez le document PDF à afficher :",
-            "Documents de l'affaire " + numeroAffaire,
-            JOptionPane.QUESTION_MESSAGE,
-            null,
-            fichiersPdf.toArray(),
-            fichiersPdf.get(0)
-        );
+        JDialog dialog = new JDialog(this, "Documents de l'affaire : " + numeroAffaire, true);
+        dialog.setSize(650, 420);
+        dialog.setLocationRelativeTo(this);
         
-        if (fichierChoisi != null) {
-            ouvrirFichierSysteme(fichierChoisi);
+        JPanel panelPrincipal = new JPanel(new BorderLayout(15, 15));
+        panelPrincipal.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panelPrincipal.setBackground(new Color(245, 247, 250));
+
+        JLabel lblTitre = new JLabel("Liste des documents disponibles (" + fichiersPdf.size() + ") - Double-cliquez pour ouvrir un fichier :");
+        lblTitre.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitre.setForeground(new Color(33, 37, 41));
+        panelPrincipal.add(lblTitre, BorderLayout.NORTH);
+
+        DefaultListModel<File> listModel = new DefaultListModel<>();
+        for (File f : fichiersPdf) {
+            listModel.addElement(f);
         }
+
+        JList<File> listeFichiers = new JList<>(listModel);
+        listeFichiers.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        listeFichiersCellRenderer(listeFichiers);
+        listeFichiers.setFixedCellHeight(40);
+        listeFichiers.setSelectionBackground(new Color(220, 235, 252));
+        listeFichiers.setSelectionForeground(Color.BLACK);
+
+        JScrollPane scrollPane = new JScrollPane(listeFichiers);
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(190, 195, 200), 1));
+        panelPrincipal.add(scrollPane, BorderLayout.CENTER);
+
+        // --- ICI : Uniquement le bouton Fermer, aucun autre bouton créé ---
+        JPanel panelBoutons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelBoutons.setOpaque(false);
+
+        JButton btnFermer = new JButton("Fermer");
+        btnFermer.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        btnFermer.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFermer.addActionListener(e -> dialog.dispose());
+
+        panelBoutons.add(btnFermer);
+        panelPrincipal.add(panelBoutons, BorderLayout.SOUTH);
+
+        // Double-clic pour ouvrir le fichier instantanément
+        listeFichiers.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    File selected = listeFichiers.getSelectedValue();
+                    if (selected != null) {
+                        dialog.dispose();
+                        ouvrirFichierSysteme(selected);
+                    }
+                }
+            }
+        });
+
+        dialog.add(panelPrincipal);
+        dialog.setVisible(true);
     }
+}
+
+    // Méthode unique et propre pour le rendu des fichiers avec une icône de document
+    // Méthode de rendu propre sans emoji pour éviter les rectangles sous Java
+private void listeFichiersCellRenderer(JList<File> list) {
+    list.setCellRenderer(new DefaultListCellRenderer() {
+        @Override
+        public Component getListCellRendererComponent(JList<?> jList, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            JLabel c = (JLabel) super.getListCellRendererComponent(jList, value, index, isSelected, cellHasFocus);
+            if (value instanceof File) {
+                File f = (File) value;
+                c.setText("  - " + f.getName());
+                c.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            }
+            return c;
+        }
+    });
 }
 
     private void ouvrirFichierSysteme(File fichier) {
@@ -481,13 +782,13 @@ public class DashboardFrame extends JFrame {
     
     public void gererUploadFichier(String numeroAffaire) {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Charger un document pour l'affaire : " + numeroAffaire);
+        fileChooser.setDialogTitle("Charger un document global pour l'affaire : " + numeroAffaire);
         int userSelection = fileChooser.showOpenDialog(this);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fichierSource = fileChooser.getSelectedFile();
             
-            File dossierCible = new File("uploads/" + numeroAffaire);
+            File dossierCible = new File("uploads/" + numeroAffaire + "/_commun");
             if (!dossierCible.exists()) {
                 dossierCible.mkdirs();
             }
@@ -497,7 +798,7 @@ public class DashboardFrame extends JFrame {
             try {
                 java.nio.file.Files.copy(fichierSource.toPath(), fichierDestination.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 JOptionPane.showMessageDialog(this, 
-                    "Document chargé avec succès dans :\n" + fichierDestination.getAbsolutePath(), 
+                    "Document global de l'affaire chargé avec succès dans :\n" + fichierDestination.getAbsolutePath(), 
                     "Upload réussi", 
                     JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception e) {
