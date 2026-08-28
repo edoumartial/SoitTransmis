@@ -1,5 +1,7 @@
 package com.soittransmis.views;
 
+import com.soittransmis.utils.ButtonEditor;
+import com.soittransmis.utils.ButtonRenderer;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -17,6 +19,8 @@ public class DashboardFrame extends JFrame {
     private JTable tableAffaires;
     private DefaultTableModel tableModel;
     private static ImageIcon folderIcon; 
+    private String nomUtilisateur;
+    private String roleUtilisateur;
     
     private JTextField txtRecherche;
     private JComboBox<String> comboStatutFiltre;
@@ -24,8 +28,19 @@ public class DashboardFrame extends JFrame {
     private static final String DB_URL = "jdbc:postgresql://localhost:5432/soit_transmis_db";
     private static final String DB_USER = "postgres";                                    
     private static final String DB_PASSWORD = "postgres"; 
+    
+   
 
+    // Constructeur par défaut de secours
     public DashboardFrame() {
+        this("Utilisateur", "Agent");
+    }
+
+    // Constructeur principal acceptant le nom et le rôle
+    public DashboardFrame(String nom, String role) {
+        this.nomUtilisateur = nom;
+        this.roleUtilisateur = role;
+
         setTitle("Tableau de bord - Suivi des Affaires");
         
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -38,18 +53,59 @@ public class DashboardFrame extends JFrame {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         mainPanel.setBackground(new Color(245, 247, 250));
 
-        // --- Panneau Nord (Titre + Barre de recherche/filtres) ---
+        // --- Panneau Nord (Titre + Infos utilisateur / Déconnexion + Recherche/Filtres) ---
         JPanel northPanel = new JPanel();
         northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
         northPanel.setBackground(new Color(245, 247, 250));
 
+        // Ligne supérieure du Nord : Titre à gauche, Bloc Utilisateur/Déconnexion à droite
+        JPanel headerTopPanel = new JPanel(new BorderLayout());
+        headerTopPanel.setOpaque(false);
+
         JLabel lblTitre = new JLabel("Gestion et Suivi des Litiges Foncier-Administratives");
         lblTitre.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblTitre.setForeground(new Color(33, 37, 41));
-        lblTitre.setAlignmentX(Component.LEFT_ALIGNMENT);
-        northPanel.add(lblTitre);
+        headerTopPanel.add(lblTitre, BorderLayout.WEST);
+
+        // Panneau Profil & Déconnexion
+        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        userPanel.setOpaque(false);
+
+        JLabel lblInfoUser = new JLabel("<html><div style='text-align: right;'><span style='color: #212529; font-weight: bold; font-size: 13px;'>" + nomUtilisateur + "</span><br/><span style='color: #6c757d; font-size: 11px;'>" + roleUtilisateur + "</span></div></html>");
+        userPanel.add(lblInfoUser);
+
+        JButton btnDeconnexion = new JButton("Déconnexion");
+        btnDeconnexion.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnDeconnexion.setBackground(new Color(220, 53, 69));
+        btnDeconnexion.setForeground(Color.WHITE);
+        btnDeconnexion.setFocusPainted(false);
+        btnDeconnexion.setOpaque(true);          // Force l'affichage du fond rouge sous Swing
+        btnDeconnexion.setBorderPainted(false);  // Supprime le contour bleu natif du système
+        btnDeconnexion.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        btnDeconnexion.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnDeconnexion.addActionListener(e -> {
+            int choix = JOptionPane.showConfirmDialog(
+                this, 
+                "Voulez-vous vraiment vous déconnecter ?", 
+                "Confirmation de déconnexion", 
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+            
+            if (choix == JOptionPane.YES_OPTION) {
+                this.dispose();
+                SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
+            }
+        });
+
+        userPanel.add(btnDeconnexion);
+        headerTopPanel.add(userPanel, BorderLayout.EAST);
+
+        northPanel.add(headerTopPanel);
         northPanel.add(Box.createVerticalStrut(15));
 
+        // Reste des filtres de recherche
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
         filterPanel.setOpaque(false);
         filterPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -61,10 +117,31 @@ public class DashboardFrame extends JFrame {
         comboStatutFiltre = new JComboBox<>(new String[]{"Tous les statuts", "En cours", "Traité et classé"});
         comboStatutFiltre.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
+        // Bouton pour créer une nouvelle affaire
+        JButton btnNouvelleAffaire = new JButton("➕ Nouvelle Affaire");
+        btnNouvelleAffaire.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnNouvelleAffaire.setBackground(new Color(40, 167, 69));
+        btnNouvelleAffaire.setForeground(Color.WHITE);
+        btnNouvelleAffaire.setFocusPainted(false);
+        btnNouvelleAffaire.setOpaque(true);
+        btnNouvelleAffaire.setBorderPainted(false);
+        btnNouvelleAffaire.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        btnNouvelleAffaire.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnNouvelleAffaire.addActionListener(e -> {
+            NouvelleAffaireDialog dialogAffaire = new NouvelleAffaireDialog(this, nomUtilisateur);
+            dialogAffaire.setVisible(true);
+            if (dialogAffaire.affaireCreee) {
+                chargerDonneesAffaires(); // Rafraîchit le tableau après l'ajout
+            }
+        });
+
         filterPanel.add(new JLabel("🔍 Recherche :"));
         filterPanel.add(txtRecherche);
         filterPanel.add(new JLabel("Statut :"));
         filterPanel.add(comboStatutFiltre);
+        filterPanel.add(Box.createHorizontalStrut(20)); // Petit espace
+        filterPanel.add(btnNouvelleAffaire);
 
         northPanel.add(filterPanel);
         mainPanel.add(northPanel, BorderLayout.NORTH);
@@ -95,18 +172,7 @@ public class DashboardFrame extends JFrame {
 
         tableAffaires.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         
-        tableAffaires.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int row = tableAffaires.rowAtPoint(e.getPoint());
-                int col = tableAffaires.columnAtPoint(e.getPoint());
-                
-                if (col == 6 && row != -1 && e.getClickCount() == 1) {
-                    String numAffaire = (String) tableModel.getValueAt(row, 0);
-                    voirDocumentsAffaire(numAffaire);
-                }
-            }
-        });
+        
 
         tableAffaires.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         tableAffaires.setRowHeight(45); 
@@ -326,6 +392,8 @@ public class DashboardFrame extends JFrame {
         }
     }
     
+    
+    
     public void voirDocumentsAffaire(String numeroAffaire) {
         java.util.List<File> fichiersPdf = new java.util.ArrayList<>();
         
@@ -513,13 +581,5 @@ public class DashboardFrame extends JFrame {
         }
     }
     
-    public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {}
-
-        SwingUtilities.invokeLater(() -> {
-            new DashboardFrame().setVisible(true);
-        });
-    }
+    
 }

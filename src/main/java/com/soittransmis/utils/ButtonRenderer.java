@@ -1,4 +1,4 @@
-package com.soittransmis.views;
+package com.soittransmis.utils;
 
 import javax.swing.*;
 import javax.swing.table.TableCellRenderer;

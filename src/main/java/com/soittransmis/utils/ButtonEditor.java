@@ -1,5 +1,6 @@
-package com.soittransmis.views;
+package com.soittransmis.utils;
 
+import com.soittransmis.views.DashboardFrame;
 import javax.swing.*;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.DefaultTableModel;
