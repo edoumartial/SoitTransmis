@@ -6,7 +6,7 @@ import java.sql.*;
 
 public class ModifierAffaireDialog extends JDialog {
 
-    private JTextField txtCommune, txtSection, txtParcelle;
+    private JTextField txtCommune, txtLieuDit, txtSection, txtParcelle;
     private JTextArea txtDescription;
     private JComboBox<String> comboStatut;
     
@@ -23,7 +23,7 @@ public class ModifierAffaireDialog extends JDialog {
         this.numeroAffaireCible = numeroAffaire;
         this.nomUtilisateurConnecte = nomUtilisateur;
 
-        setSize(500, 520);
+        setSize(500, 580);
         setLocationRelativeTo(parent);
         setResizable(false);
 
@@ -31,7 +31,7 @@ public class ModifierAffaireDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         panel.setBackground(new Color(245, 247, 250));
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 0, 8, 0);
+        gbc.insets = new Insets(6, 0, 6, 0);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
         gbc.weightx = 1.0;
@@ -54,6 +54,14 @@ public class ModifierAffaireDialog extends JDialog {
         txtCommune = new JTextField();
         txtCommune.setPreferredSize(new Dimension(0, 30));
         panel.add(txtCommune, gbc);
+
+        // Ajout du champ Lieu-dit
+        gbc.gridy = row++;
+        panel.add(new JLabel("Lieu-dit :"), gbc);
+        gbc.gridy = row++;
+        txtLieuDit = new JTextField();
+        txtLieuDit.setPreferredSize(new Dimension(0, 30));
+        panel.add(txtLieuDit, gbc);
 
         gbc.gridy = row++;
         panel.add(new JLabel("Section :"), gbc);
@@ -109,7 +117,7 @@ public class ModifierAffaireDialog extends JDialog {
     }
 
     private void chargerDonneesActuelles() {
-        String query = "SELECT a.statut, a.description, o.ville, o.section, o.parcelle " +
+        String query = "SELECT a.statut, a.description, o.ville, o.lieu_dit, o.section, o.parcelle " +
                        "FROM affaires a " +
                        "LEFT JOIN opposants o ON a.id = o.affaire_id " +
                        "WHERE a.numero_affaire = ? LIMIT 1";
@@ -122,6 +130,7 @@ public class ModifierAffaireDialog extends JDialog {
                     comboStatut.setSelectedItem(rs.getString("statut"));
                     txtDescription.setText(rs.getString("description"));
                     txtCommune.setText(rs.getString("ville"));
+                    txtLieuDit.setText(rs.getString("lieu_dit"));
                     txtSection.setText(rs.getString("section"));
                     txtParcelle.setText(rs.getString("parcelle"));
                 }
@@ -133,13 +142,14 @@ public class ModifierAffaireDialog extends JDialog {
 
     private void mettreAJourAffaire() {
         String commune = txtCommune.getText().trim();
+        String lieuDit = txtLieuDit.getText().trim();
         String section = txtSection.getText().trim();
         String parcelle = txtParcelle.getText().trim();
         String statut = (String) comboStatut.getSelectedItem();
         String description = txtDescription.getText().trim();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
-            // 1. Mise à jour de la table affaires (avec traçabilité modifie_par)
+            // 1. Mise à jour de la table affaires
             String updateAffaire = "UPDATE affaires SET statut = ?, description = ?, modifie_par = ? WHERE numero_affaire = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(updateAffaire)) {
                 pstmt.setString(1, statut);
@@ -149,16 +159,17 @@ public class ModifierAffaireDialog extends JDialog {
                 pstmt.executeUpdate();
             }
 
-            // 2. Mise à jour des infos géographiques (table opposants/requérant initial)
-            String updateOpposant = "UPDATE opposants SET ville = ?, section = ?, parcelle = ?, modifie_par = ? " +
+            // 2. Mise à jour des infos géographiques (table opposants) incluant le lieu_dit
+            String updateOpposant = "UPDATE opposants SET ville = ?, lieu_dit = ?, section = ?, parcelle = ?, modifie_par = ? " +
                                      "WHERE affaire_id = (SELECT id FROM affaires WHERE numero_affaire = ?) " +
                                      "AND (nom_prenom_ou_raison_sociale = 'Dossier Principal / Requérant initial' OR nom_prenom_ou_raison_sociale IS NULL)";
             try (PreparedStatement pstmtOpp = conn.prepareStatement(updateOpposant)) {
                 pstmtOpp.setString(1, commune);
-                pstmtOpp.setString(2, section);
-                pstmtOpp.setString(3, parcelle);
-                pstmtOpp.setString(4, nomUtilisateurConnecte);
-                pstmtOpp.setString(5, numeroAffaireCible);
+                pstmtOpp.setString(2, lieuDit.isEmpty() ? null : lieuDit);
+                pstmtOpp.setString(3, section);
+                pstmtOpp.setString(4, parcelle);
+                pstmtOpp.setString(5, nomUtilisateurConnecte);
+                pstmtOpp.setString(6, numeroAffaireCible);
                 pstmtOpp.executeUpdate();
             }
 

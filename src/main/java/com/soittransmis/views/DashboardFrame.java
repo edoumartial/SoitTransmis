@@ -29,14 +29,10 @@ public class DashboardFrame extends JFrame {
     private static final String DB_USER = "postgres";                                    
     private static final String DB_PASSWORD = "postgres"; 
     
-   
-
-    // Constructeur par défaut de secours
     public DashboardFrame() {
         this("Utilisateur", "Agent");
     }
 
-    // Constructeur principal acceptant le nom et le rôle
     public DashboardFrame(String nom, String role) {
         this.nomUtilisateur = nom;
         this.roleUtilisateur = role;
@@ -53,12 +49,10 @@ public class DashboardFrame extends JFrame {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         mainPanel.setBackground(new Color(245, 247, 250));
 
-        // --- Panneau Nord (Titre + Infos utilisateur / Déconnexion + Recherche/Filtres) ---
         JPanel northPanel = new JPanel();
         northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
         northPanel.setBackground(new Color(245, 247, 250));
 
-        // Ligne supérieure du Nord : Titre à gauche, Bloc Utilisateur/Déconnexion à droite
         JPanel headerTopPanel = new JPanel(new BorderLayout());
         headerTopPanel.setOpaque(false);
 
@@ -67,7 +61,6 @@ public class DashboardFrame extends JFrame {
         lblTitre.setForeground(new Color(33, 37, 41));
         headerTopPanel.add(lblTitre, BorderLayout.WEST);
 
-        // Panneau Profil & Déconnexion
         JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         userPanel.setOpaque(false);
 
@@ -79,8 +72,8 @@ public class DashboardFrame extends JFrame {
         btnDeconnexion.setBackground(new Color(220, 53, 69));
         btnDeconnexion.setForeground(Color.WHITE);
         btnDeconnexion.setFocusPainted(false);
-        btnDeconnexion.setOpaque(true);          // Force l'affichage du fond rouge sous Swing
-        btnDeconnexion.setBorderPainted(false);  // Supprime le contour bleu natif du système
+        btnDeconnexion.setOpaque(true);          
+        btnDeconnexion.setBorderPainted(false);  
         btnDeconnexion.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         btnDeconnexion.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -105,19 +98,17 @@ public class DashboardFrame extends JFrame {
         northPanel.add(headerTopPanel);
         northPanel.add(Box.createVerticalStrut(15));
 
-        // Reste des filtres de recherche
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
         filterPanel.setOpaque(false);
         filterPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         txtRecherche = new JTextField(22);
         txtRecherche.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtRecherche.putClientProperty("JTextField.placeholderText", "Rechercher par numéro, commune...");
+        txtRecherche.putClientProperty("JTextField.placeholderText", "Rechercher par numéro, commune, lieu-dit...");
 
         comboStatutFiltre = new JComboBox<>(new String[]{"Tous les statuts", "En cours", "Traité et classé"});
         comboStatutFiltre.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-        // Bouton pour créer une nouvelle affaire
         JButton btnNouvelleAffaire = new JButton("➕ Nouvelle Affaire");
         btnNouvelleAffaire.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnNouvelleAffaire.setBackground(new Color(40, 167, 69));
@@ -132,7 +123,7 @@ public class DashboardFrame extends JFrame {
             NouvelleAffaireDialog dialogAffaire = new NouvelleAffaireDialog(this, nomUtilisateur);
             dialogAffaire.setVisible(true);
             if (dialogAffaire.affaireCreee) {
-                chargerDonneesAffaires(); // Rafraîchit le tableau après l'ajout
+                chargerDonneesAffaires(); 
             }
         });
 
@@ -140,19 +131,19 @@ public class DashboardFrame extends JFrame {
         filterPanel.add(txtRecherche);
         filterPanel.add(new JLabel("Statut :"));
         filterPanel.add(comboStatutFiltre);
-        filterPanel.add(Box.createHorizontalStrut(20)); // Petit espace
+        filterPanel.add(Box.createHorizontalStrut(20)); 
         filterPanel.add(btnNouvelleAffaire);
 
         northPanel.add(filterPanel);
         mainPanel.add(northPanel, BorderLayout.NORTH);
 
-        // --- Initialisation du Tableau ---
-        String[] colonnes = {"Numéro affaire", "Commune", "Section", "Parcelle", "Statut", "Description", "Fichiers"};
+        // --- Initialisation du Tableau (avec Lieu-dit inclus à l'index 2) ---
+        String[] colonnes = {"Numéro affaire", "Commune", "Lieu-dit", "Section", "Parcelle", "Statut", "Description", "Fichiers"};
         
         tableModel = new DefaultTableModel(new Object[][]{}, colonnes) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 5 || column == 6; 
+                return column == 6 || column == 7; // Description (index 6) et Fichiers (index 7)
             }
         };
 
@@ -163,16 +154,14 @@ public class DashboardFrame extends JFrame {
             int row = e.getFirstRow();
             int column = e.getColumn();
 
-            if (column == 5 && row >= 0) {
-                String nouveauTexte = (String) tableModel.getValueAt(row, 5);
+            if (column == 6 && row >= 0) {
+                String nouveauTexte = (String) tableModel.getValueAt(row, 6);
                 String numeroAffaire = (String) tableModel.getValueAt(row, 0);
                 mettreAJourDescriptionEnBD(numeroAffaire, nouveauTexte);
             }
         });
 
         tableAffaires.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
-        
-        
 
         tableAffaires.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         tableAffaires.setRowHeight(45); 
@@ -197,10 +186,10 @@ public class DashboardFrame extends JFrame {
 
                 String texteColonne = value != null ? value.toString() : "";
 
-                if (column == 5) {
+                if (column == 6) {
                     label.setText(texteColonne + " [ ? ]");
                     label.setToolTipText("<html><b>Aide Description :</b><br>• Clic simple : Modifier la description<br>• Double-clic : Accéder aux détails de l'affaire</html>");
-                } else if (column == 6) {
+                } else if (column == 7) {
                     label.setText(texteColonne + " [ ? ]");
                     label.setToolTipText("<html><b>Aide Fichiers :</b><br>• Clic simple : Voir les documents de l'affaire<br>• Double-clic : Charger de nouveaux documents</html>");
                 } else {
@@ -215,10 +204,11 @@ public class DashboardFrame extends JFrame {
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         centerRenderer.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         
-        tableAffaires.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
-        tableAffaires.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
-        tableAffaires.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
-        tableAffaires.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+        tableAffaires.getColumnModel().getColumn(0).setCellRenderer(centerRenderer); // Numéro
+        tableAffaires.getColumnModel().getColumn(1).setCellRenderer(centerRenderer); // Commune
+        tableAffaires.getColumnModel().getColumn(2).setCellRenderer(centerRenderer); // Lieu-dit
+        tableAffaires.getColumnModel().getColumn(3).setCellRenderer(centerRenderer); // Section
+        tableAffaires.getColumnModel().getColumn(4).setCellRenderer(centerRenderer); // Parcelle
         
         DefaultTableCellRenderer statutRenderer = new DefaultTableCellRenderer() {
             @Override
@@ -240,7 +230,7 @@ public class DashboardFrame extends JFrame {
                 return c;
             }
         };
-        tableAffaires.getColumnModel().getColumn(4).setCellRenderer(statutRenderer);
+        tableAffaires.getColumnModel().getColumn(5).setCellRenderer(statutRenderer); // Statut
 
         DefaultTableCellRenderer leftRenderer = new DefaultTableCellRenderer() {
             @Override
@@ -256,24 +246,48 @@ public class DashboardFrame extends JFrame {
             }
         };
         leftRenderer.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        tableAffaires.getColumnModel().getColumn(5).setCellRenderer(leftRenderer);
+        tableAffaires.getColumnModel().getColumn(6).setCellRenderer(leftRenderer); // Description
 
-        tableAffaires.getColumnModel().getColumn(6).setCellRenderer(new ButtonRenderer(folderIcon));
-        tableAffaires.getColumnModel().getColumn(6).setCellEditor(new ButtonEditor(this, folderIcon, tableAffaires, tableModel));
-        tableAffaires.getColumnModel().getColumn(6).setMaxWidth(120);
-        tableAffaires.getColumnModel().getColumn(6).setMinWidth(120);
+        tableAffaires.getColumnModel().getColumn(7).setCellRenderer(new ButtonRenderer(folderIcon));
+        tableAffaires.getColumnModel().getColumn(7).setCellEditor(new ButtonEditor(this, folderIcon, tableAffaires, tableModel));
+        tableAffaires.getColumnModel().getColumn(7).setMaxWidth(120);
+        tableAffaires.getColumnModel().getColumn(7).setMinWidth(120);
+
+        // --- Menu contextuel (Clic-droit) pour Classer / Réouvrir ---
+        JPopupMenu popupMenu = new JPopupMenu();
+        JMenuItem menuItemChangerStatut = new JMenuItem();
+        menuItemChangerStatut.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        menuItemChangerStatut.addActionListener(e -> basculerStatutAffaireSelectionnee());
+        popupMenu.add(menuItemChangerStatut);
+        tableAffaires.setComponentPopupMenu(popupMenu);
 
         tableAffaires.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
+                if (e.getClickCount() == 2 && !SwingUtilities.isRightMouseButton(e)) {
                     int ligneSelectionnee = tableAffaires.getSelectedRow();
                     if (ligneSelectionnee != -1) {
                         String numAffaire = (String) tableModel.getValueAt(ligneSelectionnee, 0);
                         String commune = (String) tableModel.getValueAt(ligneSelectionnee, 1);
-                        String description = (String) tableModel.getValueAt(ligneSelectionnee, 5);
+                        String description = (String) tableModel.getValueAt(ligneSelectionnee, 6);
                         
                         new AffaireDetailsDialog(DashboardFrame.this, numAffaire, commune, description, folderIcon).setVisible(true);
+                    }
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    int row = tableAffaires.rowAtPoint(e.getPoint());
+                    if (row >= 0 && row < tableAffaires.getRowCount()) {
+                        tableAffaires.setRowSelectionInterval(row, row);
+                        String statut = (String) tableModel.getValueAt(row, 5);
+                        if (statut != null && statut.equalsIgnoreCase("En cours")) {
+                    menuItemChangerStatut.setText("Classer l'affaire");
+                } else {
+                    menuItemChangerStatut.setText("Réouvrir l'affaire");
+                }
                     }
                 }
             }
@@ -283,7 +297,7 @@ public class DashboardFrame extends JFrame {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(190, 195, 200), 1));
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        JLabel lblInfo = new JLabel("💡 Astuce : Double-cliquez sur une ligne pour afficher les détails. Cliquez sur l'icône dossier 📁 pour uploader des fichiers.");
+        JLabel lblInfo = new JLabel("💡 Astuce : Double-cliquez sur une ligne pour afficher les détails. Clic-droit pour Classer/Réouvrir. Dossier 📁 pour uploader.");
         lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblInfo.setForeground(new Color(90, 100, 110));
         mainPanel.add(lblInfo, BorderLayout.SOUTH);
@@ -312,66 +326,69 @@ public class DashboardFrame extends JFrame {
     }
 
     private void chargerDonneesAffaires() {
-        StringBuilder query = new StringBuilder(
-            "SELECT DISTINCT ON (a.numero_affaire) " +
-            "a.numero_affaire, a.description, a.statut, o.ville, o.section, o.parcelle " +
-            "FROM affaires a " +
-            "LEFT JOIN opposants o ON a.id = o.affaire_id WHERE 1=1"
-        );
+    StringBuilder query = new StringBuilder(
+        "SELECT DISTINCT ON (a.numero_affaire) " +
+        "a.numero_affaire, a.description, a.statut, o.ville, o.lieu_dit, o.section, o.parcelle " +
+        "FROM affaires a " +
+        "LEFT JOIN opposants o ON a.id = o.affaire_id WHERE 1=1"
+    );
 
-        String texteRecherche = (txtRecherche != null) ? txtRecherche.getText().trim() : "";
-        String statutSelectionne = (comboStatutFiltre != null) ? (String) comboStatutFiltre.getSelectedItem() : "Tous les statuts";
+    String texteRecherche = (txtRecherche != null) ? txtRecherche.getText().trim() : "";
+    String statutSelectionne = (comboStatutFiltre != null) ? (String) comboStatutFiltre.getSelectedItem() : "Tous les statuts";
 
+    // Ajout du champ lieu_dit (o.lieu_dit ILIKE ?) dans la condition de recherche
+    if (!texteRecherche.isEmpty()) {
+        query.append(" AND (a.numero_affaire ILIKE ? OR o.ville ILIKE ? OR o.lieu_dit ILIKE ? OR a.description ILIKE ?)");
+    }
+
+    if (statutSelectionne != null && !statutSelectionne.equals("Tous les statuts")) {
+        query.append(" AND a.statut = ?");
+    }
+
+    query.append(" ORDER BY a.numero_affaire");
+
+    try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+         PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
+
+        int paramIndex = 1;
         if (!texteRecherche.isEmpty()) {
-            query.append(" AND (a.numero_affaire ILIKE ? OR o.ville ILIKE ? OR a.description ILIKE ?)");
+            String motif = "%" + texteRecherche + "%";
+            pstmt.setString(paramIndex++, motif); // Numéro d'affaire
+            pstmt.setString(paramIndex++, motif); // Ville / Commune
+            pstmt.setString(paramIndex++, motif); // Lieu-dit (AJOUTÉ)
+            pstmt.setString(paramIndex++, motif); // Description
         }
-
         if (statutSelectionne != null && !statutSelectionne.equals("Tous les statuts")) {
-            query.append(" AND a.statut = ?");
+            pstmt.setString(paramIndex++, statutSelectionne);
         }
 
-        query.append(" ORDER BY a.numero_affaire");
+        try (ResultSet rs = pstmt.executeQuery()) {
+            if (tableModel != null) {
+                tableModel.setRowCount(0);
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
-
-            int paramIndex = 1;
-            if (!texteRecherche.isEmpty()) {
-                String motif = "%" + texteRecherche + "%";
-                pstmt.setString(paramIndex++, motif);
-                pstmt.setString(paramIndex++, motif);
-                pstmt.setString(paramIndex++, motif);
-            }
-            if (statutSelectionne != null && !statutSelectionne.equals("Tous les statuts")) {
-                pstmt.setString(paramIndex++, statutSelectionne);
-            }
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (tableModel != null) {
-                    tableModel.setRowCount(0);
-
-                    while (rs.next()) {
-                        Vector<Object> row = new Vector<>();
-                        row.add(rs.getString("numero_affaire")); 
-                        row.add(rs.getString("ville"));          
-                        row.add(rs.getString("section"));        
-                        row.add(rs.getString("parcelle"));       
-                        row.add(rs.getString("statut"));         
-                        row.add(rs.getString("description"));    
-                        row.add("Ouvrir");                       
-                        tableModel.addRow(row);
-                    }
+                while (rs.next()) {
+                    Vector<Object> row = new Vector<>();
+                    row.add(rs.getString("numero_affaire")); 
+                    row.add(rs.getString("ville")); 
+                    row.add(rs.getString("lieu_dit")); // Affichage du lieu-dit dans la bonne colonne
+                    row.add(rs.getString("section"));        
+                    row.add(rs.getString("parcelle"));       
+                    row.add(rs.getString("statut"));         
+                    row.add(rs.getString("description"));    
+                    row.add("Ouvrir");                       
+                    tableModel.addRow(row);
                 }
             }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Erreur de chargement :\n" + e.getMessage(), 
-                "Erreur SQL", 
-                JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
         }
+
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(this, 
+            "Erreur de chargement :\n" + e.getMessage(), 
+            "Erreur SQL", 
+            JOptionPane.ERROR_MESSAGE);
+        e.printStackTrace();
     }
+}
 
     private void mettreAJourDescriptionEnBD(String numeroAffaire, String nouvelleDescription) {
         String query = "UPDATE affaires SET description = ? WHERE numero_affaire = ?";
@@ -391,8 +408,6 @@ public class DashboardFrame extends JFrame {
             e.printStackTrace();
         }
     }
-    
-    
     
     public void voirDocumentsAffaire(String numeroAffaire) {
         java.util.List<File> fichiersPdf = new java.util.ArrayList<>();
@@ -581,5 +596,57 @@ public class DashboardFrame extends JFrame {
         }
     }
     
+    private void basculerStatutAffaireSelectionnee() {
+    int ligneSelectionnee = tableAffaires.getSelectedRow();
+    if (ligneSelectionnee == -1) {
+        JOptionPane.showMessageDialog(this, 
+            "Veuillez sélectionner une affaire dans le tableau.", 
+            "Aucune sélection", 
+            JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    String numeroAffaire = (String) tableModel.getValueAt(ligneSelectionnee, 0);
+    String statutActuel = (String) tableModel.getValueAt(ligneSelectionnee, 5);
     
+    // Détermination du nouveau statut opposé
+    String nouveauStatut = statutActuel.equalsIgnoreCase("En cours") ? "Traité et classé" : "En cours";
+    String actionTexte = nouveauStatut.equals("Traité et classé") ? "classer" : "réouvrir";
+
+    int confirmation = JOptionPane.showConfirmDialog(
+        this,
+        "Voulez-vous vraiment " + actionTexte + " l'affaire n° " + numeroAffaire + " ?",
+        "Confirmation de modification de statut",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (confirmation == JOptionPane.YES_OPTION) {
+        String query = "UPDATE affaires SET statut = ?, modifie_par = ? WHERE numero_affaire = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, nouveauStatut);
+            pstmt.setString(2, nomUtilisateur); // Utilise l'utilisateur connecté
+            pstmt.setString(3, numeroAffaire);
+            pstmt.executeUpdate();
+
+            // Rafraîchir le tableau pour refléter le changement
+            chargerDonneesAffaires();
+
+            JOptionPane.showMessageDialog(this, 
+                "L'affaire a été mise à jour avec succès (Statut : " + nouveauStatut + ").", 
+                "Succès", 
+                JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Erreur lors de la mise à jour du statut :\n" + e.getMessage(), 
+                "Erreur SQL", 
+                JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+}
 }

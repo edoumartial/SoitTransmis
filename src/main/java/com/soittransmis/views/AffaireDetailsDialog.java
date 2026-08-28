@@ -107,10 +107,10 @@ public class AffaireDetailsDialog extends JDialog {
     }
 
     private void chargerOpposantsCartesLibres(String numeroAffaire, JPanel containerLibre) {
-        String query = "SELECT o.id, o.nom_prenom_ou_raison_sociale, o.ref_dossier " +
-                       "FROM opposants o " +
-                       "JOIN affaires a ON o.affaire_id = a.id " +
-                       "WHERE a.numero_affaire = ?";
+        String query = "SELECT o.id, o.nom_prenom_ou_raison_sociale, o.ref_dossier, o.contact " +
+               "FROM opposants o " +
+               "JOIN affaires a ON o.affaire_id = a.id " +
+               "WHERE a.numero_affaire = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(query)) {
@@ -126,6 +126,7 @@ public class AffaireDetailsDialog extends JDialog {
                     hasData = true;
                     String nom = rs.getString("nom_prenom_ou_raison_sociale");
                     String ref = rs.getString("ref_dossier");
+                    String contact = rs.getString("contact");
 
                     JPanel carte = new JPanel() {
                         @Override
@@ -146,7 +147,7 @@ public class AffaireDetailsDialog extends JDialog {
                         }
                     };
                     carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
-                    carte.setBounds(x, y, 245, 165);
+                    carte.setBounds(x, y, 245, 190);
                     carte.setOpaque(false);
                     carte.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
                     carte.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
@@ -176,9 +177,18 @@ public class AffaireDetailsDialog extends JDialog {
                     txtRef.setOpaque(false);
                     txtRef.setAlignmentX(Component.LEFT_ALIGNMENT);
                     carte.add(txtRef);
+                    carte.add(Box.createVerticalStrut(2));
+
+                    JTextField txtContact = new JTextField("Contact : " + (contact != null && !contact.isEmpty() ? contact : "N/A"));
+                    txtContact.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                    txtContact.setForeground(new Color(73, 80, 87));
+                    txtContact.setEditable(false);
+                    txtContact.setBorder(null);
+                    txtContact.setOpaque(false);
+                    txtContact.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    carte.add(txtContact);
                     carte.add(Box.createVerticalStrut(8));
 
-                    // Bouton Dossier individuel pour chaque opposant
                     JButton btnDossierOpposant = new JButton("Documents");
                     if (folderIcon != null) {
                         btnDossierOpposant.setIcon(folderIcon);
@@ -192,7 +202,6 @@ public class AffaireDetailsDialog extends JDialog {
                     
                     carte.add(btnDossierOpposant);
 
-                    // Glisser-déposer de la carte
                     MouseAdapter moveOrSelect = new MouseAdapter() {
                         private int mouseX, mouseY;
 
@@ -205,7 +214,7 @@ public class AffaireDetailsDialog extends JDialog {
 
                         @Override
                         public void mouseDragged(MouseEvent e) {
-                            if (!txtNom.getCaret().isSelectionVisible() && !txtRef.getCaret().isSelectionVisible()) {
+                            if (!txtNom.getCaret().isSelectionVisible() && !txtRef.getCaret().isSelectionVisible() && !txtContact.getCaret().isSelectionVisible()) {
                                 int nouveauX = carte.getX() + (e.getX() - mouseX);
                                 int nouveauY = carte.getY() + (e.getY() - mouseY);
                                 carte.setLocation(nouveauX, nouveauY);
@@ -221,6 +230,8 @@ public class AffaireDetailsDialog extends JDialog {
                     txtNom.addMouseMotionListener(moveOrSelect);
                     txtRef.addMouseListener(moveOrSelect);
                     txtRef.addMouseMotionListener(moveOrSelect);
+                    txtContact.addMouseListener(moveOrSelect);
+                    txtContact.addMouseMotionListener(moveOrSelect);
 
                     containerLibre.add(carte);
 
@@ -228,7 +239,7 @@ public class AffaireDetailsDialog extends JDialog {
                     index++;
                     if (index % 2 == 0) {
                         x = 20;
-                        y += 185;
+                        y += 205;
                     }
                 }
 
@@ -242,10 +253,12 @@ public class AffaireDetailsDialog extends JDialog {
             }
 
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Erreur de chargement des opposants.", "Erreur SQL", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erreur SQL : " + e.getMessage(), "Erreur de chargement", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
     }
+
+  
 
     private void voirDocumentsOpposant(String numeroAffaire, String nomOpposant) {
         java.util.List<File> fichiersOpposant = new java.util.ArrayList<>();

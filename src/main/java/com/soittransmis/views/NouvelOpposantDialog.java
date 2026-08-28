@@ -1,107 +1,169 @@
 package com.soittransmis.views;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.sql.*;
 
 public class NouvelOpposantDialog extends JDialog {
 
-    private JTextField txtNomOpposant, txtPrenomOpposant, txtVille, txtSection, txtRefDossier;
+    private JTextField txtNomOpposant;
+    private JTextField txtPrenomOpposant;
+    private JTextField txtRefDossier;
+    private JTextField txtContact;
+    private JTextField txtVille;
+    private JTextField txtSection;
     private JTextArea txtMotifs;
+    
     private String numeroAffaireCible;
-
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/soit_transmis_db";
+    
+    // Paramètres de connexion à la base de données (à adapter selon votre configuration)
+    private static final String DB_URL = "jdbc:postgresql://localhost:5432/soittransmis_db";
     private static final String DB_USER = "postgres";
-    private static final String DB_PASSWORD = "postgres";
+    private static final String DB_PASSWORD = "admin";
 
-    public NouvelOpposantDialog(Frame parent, String numeroAffaire) {
-        super(parent, "Ajouter un opposant à l'affaire : " + numeroAffaire, true);
-        this.numeroAffaireCible = numeroAffaire;
-
-        setSize(480, 580); // Légèrement agrandi pour le nouveau champ
+    public NouvelOpposantDialog(Frame parent, String numeroAffaireCible) {
+        super(parent, "Ajouter un opposant - Affaire N° " + numeroAffaireCible, true);
+        this.numeroAffaireCible = numeroAffaireCible;
+        
+        initComponents();
+        setSize(500, 650);
         setLocationRelativeTo(parent);
         setResizable(false);
+    }
 
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        panel.setBackground(new Color(245, 247, 250));
+    private void initComponents() {
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        mainPanel.setBackground(new Color(248, 249, 250));
+
+        // En-tête
+        JLabel lblTitle = new JLabel("Nouvel Opposant / Tiers");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(new Color(33, 37, 41));
+        lblTitle.setBorder(new EmptyBorder(0, 0, 15, 0));
+        mainPanel.add(lblTitle, BorderLayout.NORTH);
+
+        // Formulaire central
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(Color.WHITE);
+        formPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(222, 226, 230), 1),
+            new EmptyBorder(20, 20, 20, 20)
+        ));
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 0, 5, 0);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
+        gbc.gridy = 0;
         gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 10, 0);
 
         int row = 0;
 
+        // Nom de l'opposant
         gbc.gridy = row++;
-        panel.add(new JLabel("Nom de l'opposant :"), gbc);
+        formPanel.add(createFieldLabel("Nom de l'opposant * :"), gbc);
         gbc.gridy = row++;
         txtNomOpposant = new JTextField();
-        txtNomOpposant.setPreferredSize(new Dimension(0, 30));
-        panel.add(txtNomOpposant, gbc);
+        txtNomOpposant.setPreferredSize(new Dimension(0, 32));
+        formPanel.add(txtNomOpposant, gbc);
 
+        // Prénom de l'opposant
         gbc.gridy = row++;
-        panel.add(new JLabel("Prénom de l'opposant :"), gbc);
+        formPanel.add(createFieldLabel("Prénom(s) :"), gbc);
         gbc.gridy = row++;
         txtPrenomOpposant = new JTextField();
-        txtPrenomOpposant.setPreferredSize(new Dimension(0, 30));
-        panel.add(txtPrenomOpposant, gbc);
+        txtPrenomOpposant.setPreferredSize(new Dimension(0, 32));
+        formPanel.add(txtPrenomOpposant, gbc);
 
-        // Champ Référence du dossier opposant
+        // Référence du dossier
         gbc.gridy = row++;
-        panel.add(new JLabel("Référence du dossier (ex: REF-007) :"), gbc);
+        formPanel.add(createFieldLabel("Référence du dossier :"), gbc);
         gbc.gridy = row++;
         txtRefDossier = new JTextField();
-        txtRefDossier.setPreferredSize(new Dimension(0, 30));
-        panel.add(txtRefDossier, gbc);
+        txtRefDossier.setPreferredSize(new Dimension(0, 32));
+        formPanel.add(txtRefDossier, gbc);
 
+        // Contact (Téléphone / Email)
         gbc.gridy = row++;
-        panel.add(new JLabel("Ville / Commune :"), gbc);
+        formPanel.add(createFieldLabel("Contact (Téléphone / Email) :"), gbc);
         gbc.gridy = row++;
+        txtContact = new JTextField();
+        txtContact.setPreferredSize(new Dimension(0, 32));
+        formPanel.add(txtContact, gbc);
+
+        // Ville et Section (sur la même ligne ou empilées)
+        JPanel subPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        subPanel.setBackground(Color.WHITE);
+        
+        JPanel pVille = new JPanel(new BorderLayout(0, 5));
+        pVille.setBackground(Color.WHITE);
+        pVille.add(createFieldLabel("Ville :"), BorderLayout.NORTH);
         txtVille = new JTextField();
-        txtVille.setPreferredSize(new Dimension(0, 30));
-        panel.add(txtVille, gbc);
+        txtVille.setPreferredSize(new Dimension(0, 32));
+        pVille.add(txtVille, BorderLayout.CENTER);
 
-        gbc.gridy = row++;
-        panel.add(new JLabel("Section / Parcelle :"), gbc);
-        gbc.gridy = row++;
+        JPanel pSection = new JPanel(new BorderLayout(0, 5));
+        pSection.setBackground(Color.WHITE);
+        pSection.add(createFieldLabel("Section :"), BorderLayout.NORTH);
         txtSection = new JTextField();
-        txtSection.setPreferredSize(new Dimension(0, 30));
-        panel.add(txtSection, gbc);
+        txtSection.setPreferredSize(new Dimension(0, 32));
+        pSection.add(txtSection, BorderLayout.CENTER);
+
+        subPanel.add(pVille);
+        subPanel.add(pSection);
 
         gbc.gridy = row++;
-        panel.add(new JLabel("Motifs du litige :"), gbc);
+        formPanel.add(subPanel, gbc);
+        row++; // incrémentation supplémentaire pour le sous-panneau
+
+        // Motifs de l'opposition
         gbc.gridy = row++;
-        txtMotifs = new JTextArea(2, 20);
+        formPanel.add(createFieldLabel("Motifs de l'opposition :"), gbc);
+        gbc.gridy = row++;
+        txtMotifs = new JTextArea(4, 20);
         txtMotifs.setLineWrap(true);
-        panel.add(new JScrollPane(txtMotifs), gbc);
+        txtMotifs.setWrapStyleWord(true);
+        JScrollPane scrollMotifs = new JScrollPane(txtMotifs);
+        formPanel.add(scrollMotifs, gbc);
 
-        // Boutons
-        gbc.gridy = row++;
-        JPanel panelBoutons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelBoutons.setOpaque(false);
+        mainPanel.add(formPanel, BorderLayout.CENTER);
 
-        JButton btnFermer = new JButton("Terminer");
-        JButton btnAjouter = new JButton("Enregistrer l'opposant");
-        btnAjouter.setBackground(new Color(0, 123, 255));
-        btnAjouter.setForeground(Color.WHITE);
-        btnAjouter.setOpaque(true);
-        btnAjouter.setBorderPainted(false);
+        // Panneau des boutons du bas
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 15));
+        btnPanel.setBackground(new Color(248, 249, 250));
 
-        btnFermer.addActionListener(e -> dispose());
-        btnAjouter.addActionListener(e -> enregistrerOpposantEtContinuer());
+        JButton btnAnnuler = new JButton("Annuler");
+        btnAnnuler.setPreferredSize(new Dimension(100, 35));
+        btnAnnuler.addActionListener(e -> dispose());
 
-        panelBoutons.add(btnFermer);
-        panelBoutons.add(btnAjouter);
-        panel.add(panelBoutons, gbc);
+        JButton btnEnregistrer = new JButton("Enregistrer");
+        btnEnregistrer.setPreferredSize(new Dimension(120, 35));
+        btnEnregistrer.putClientProperty(FlatClientProperties.STYLE, "background: #0d6efd; foreground: #ffffff;");
+        btnEnregistrer.addActionListener(e -> enregistrerOpposantEtContinuer());
 
-        add(panel);
+        btnPanel.add(btnAnnuler);
+        btnPanel.add(btnEnregistrer);
+
+        mainPanel.add(btnPanel, BorderLayout.SOUTH);
+
+        setContentPane(mainPanel);
+    }
+
+    private JLabel createFieldLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(new Color(73, 80, 87));
+        return lbl;
     }
 
     private void enregistrerOpposantEtContinuer() {
         String nom = txtNomOpposant.getText().trim();
         String prenom = txtPrenomOpposant.getText().trim();
         String refDossier = txtRefDossier.getText().trim();
+        String contact = txtContact.getText().trim();
         String ville = txtVille.getText().trim();
         String section = txtSection.getText().trim();
         String motifs = txtMotifs.getText().trim();
@@ -114,6 +176,7 @@ public class NouvelOpposantDialog extends JDialog {
         String nomComplet = nom + (prenom.isEmpty() ? "" : " " + prenom);
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            // Récupérer l'ID de l'affaire correspondante
             String getAffaireId = "SELECT id FROM affaires WHERE numero_affaire = ?";
             int affaireId = -1;
             try (PreparedStatement pstmt = conn.prepareStatement(getAffaireId)) {
@@ -126,19 +189,21 @@ public class NouvelOpposantDialog extends JDialog {
             }
 
             if (affaireId != -1) {
-                // Insertion incluant la colonne ref_dossier
-                String insertOpposant = "INSERT INTO opposants (affaire_id, nom_prenom_ou_raison_sociale, ref_dossier, ville, section) VALUES (?, ?, ?, ?, ?)";
+                // Insertion dans la base de données avec la colonne contact
+                String insertOpposant = "INSERT INTO opposants (affaire_id, nom_prenom_ou_raison_sociale, ref_dossier, contact, ville, section) VALUES (?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(insertOpposant)) {
                     pstmt.setInt(1, affaireId);
                     pstmt.setString(2, nomComplet);
                     pstmt.setString(3, refDossier.isEmpty() ? null : refDossier);
-                    pstmt.setString(4, ville);
-                    pstmt.setString(5, section);
+                    pstmt.setString(4, contact.isEmpty() ? null : contact);
+                    pstmt.setString(5, ville);
+                    pstmt.setString(6, section);
                     pstmt.executeUpdate();
                 }
 
                 JOptionPane.showMessageDialog(this, "Opposant ajouté avec succès !", "Succès", JOptionPane.INFORMATION_MESSAGE);
 
+                // Demander si l'utilisateur souhaite ajouter un autre opposant pour la même affaire
                 int reponse = JOptionPane.showConfirmDialog(
                     this, 
                     "Voulez-vous ajouter un autre opposant pour cette affaire ?", 
@@ -148,9 +213,11 @@ public class NouvelOpposantDialog extends JDialog {
                 );
 
                 if (reponse == JOptionPane.YES_OPTION) {
+                    // Réinitialisation des champs pour une nouvelle saisie consécutive
                     txtNomOpposant.setText("");
                     txtPrenomOpposant.setText("");
                     txtRefDossier.setText("");
+                    txtContact.setText("");
                     txtVille.setText("");
                     txtSection.setText("");
                     txtMotifs.setText("");
@@ -158,10 +225,11 @@ public class NouvelOpposantDialog extends JDialog {
                 } else {
                     dispose();
                 }
+            } else {
+                JOptionPane.showMessageDialog(this, "Affaire introuvable dans la base de données.", "Erreur", JOptionPane.ERROR_MESSAGE);
             }
-
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "Erreur SQL : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erreur SQL : " + ex.getMessage(), "Erreur de base de données", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
     }

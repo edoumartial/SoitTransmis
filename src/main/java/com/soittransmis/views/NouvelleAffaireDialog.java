@@ -6,7 +6,7 @@ import java.sql.*;
 
 public class NouvelleAffaireDialog extends JDialog {
 
-    private JTextField txtNumeroAffaire, txtCommune, txtSection, txtParcelle;
+    private JTextField txtNumeroAffaire, txtCommune, txtLieuDit, txtSection, txtParcelle;
     private JTextArea txtDescription;
     private JComboBox<String> comboStatut;
     
@@ -21,7 +21,7 @@ public class NouvelleAffaireDialog extends JDialog {
         super(parent, "Créer une nouvelle affaire", true);
         this.nomUtilisateurConnecte = nomUtilisateur;
 
-        setSize(500, 550);
+        setSize(500, 600);
         setLocationRelativeTo(parent);
         setResizable(false);
 
@@ -29,7 +29,7 @@ public class NouvelleAffaireDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         panel.setBackground(new Color(245, 247, 250));
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 0, 8, 0);
+        gbc.insets = new Insets(6, 0, 6, 0);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
         gbc.weightx = 1.0;
@@ -41,8 +41,8 @@ public class NouvelleAffaireDialog extends JDialog {
         gbc.gridy = row++;
         txtNumeroAffaire = new JTextField();
         txtNumeroAffaire.setPreferredSize(new Dimension(0, 30));
-        txtNumeroAffaire.setEditable(false); // Empêche la saisie manuelle
-        txtNumeroAffaire.setBackground(new Color(230, 230, 230)); // Grise le champ pour indiquer qu'il est automatique
+        txtNumeroAffaire.setEditable(false);
+        txtNumeroAffaire.setBackground(new Color(230, 230, 230));
         panel.add(txtNumeroAffaire, gbc);
 
         // Génération et affichage du prochain numéro d'affaire
@@ -54,6 +54,14 @@ public class NouvelleAffaireDialog extends JDialog {
         txtCommune = new JTextField();
         txtCommune.setPreferredSize(new Dimension(0, 30));
         panel.add(txtCommune, gbc);
+
+        // Ajout du champ Lieu-dit
+        gbc.gridy = row++;
+        panel.add(new JLabel("Lieu-dit :"), gbc);
+        gbc.gridy = row++;
+        txtLieuDit = new JTextField();
+        txtLieuDit.setPreferredSize(new Dimension(0, 30));
+        panel.add(txtLieuDit, gbc);
 
         gbc.gridy = row++;
         panel.add(new JLabel("Section :"), gbc);
@@ -105,10 +113,6 @@ public class NouvelleAffaireDialog extends JDialog {
         add(panel);
     }
 
-    /**
-     * Méthode pour générer automatiquement le prochain numéro d'affaire.
-     * Suppose un format basé sur un entier ou une séquence (ex: convertit le max en entier et ajoute 1, ou utilise une valeur par défaut "AFF-001").
-     */
     private void genererProchainNumeroAffaire() {
         String query = "SELECT numero_affaire FROM affaires ORDER BY id DESC LIMIT 1";
         
@@ -119,19 +123,15 @@ public class NouvelleAffaireDialog extends JDialog {
             if (rs.next()) {
                 String dernierNum = rs.getString("numero_affaire");
                 try {
-                    // Si le numéro est purement numérique ou contient un nombre extractible
                     int prochainNum = Integer.parseInt(dernierNum.replaceAll("\\D+", "")) + 1;
-                    txtNumeroAffaire.setText(String.format("AFF-%03d", prochainNum)); // Format ex: AFF-005
+                    txtNumeroAffaire.setText(String.format("AFF-%03d", prochainNum));
                 } catch (NumberFormatException e) {
-                    // Fallback si le format textuel est complexe
                     txtNumeroAffaire.setText("AFF-" + System.currentTimeMillis());
                 }
             } else {
-                // Première affaire de la base de données
                 txtNumeroAffaire.setText("AFF-001");
             }
         } catch (SQLException e) {
-            // En cas d'erreur SQL, valeur de secours
             txtNumeroAffaire.setText("AFF-001");
             e.printStackTrace();
         }
@@ -140,6 +140,7 @@ public class NouvelleAffaireDialog extends JDialog {
     private void enregistrerAffaire() {
         String numAffaire = txtNumeroAffaire.getText().trim();
         String commune = txtCommune.getText().trim();
+        String lieuDit = txtLieuDit.getText().trim();
         String section = txtSection.getText().trim();
         String parcelle = txtParcelle.getText().trim();
         String statut = (String) comboStatut.getSelectedItem();
@@ -152,7 +153,7 @@ public class NouvelleAffaireDialog extends JDialog {
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
             
-            // 1. Récupérer l'ID numérique de l'utilisateur connecté (basé sur son nom ou son identifiant)
+            // 1. Récupérer l'ID numérique de l'utilisateur connecté
             int utilisateurId = -1;
             String queryUser = "SELECT id FROM utilisateurs WHERE nom = ? OR identifiant = ?";
             try (PreparedStatement pstmtUser = conn.prepareStatement(queryUser)) {
@@ -165,13 +166,12 @@ public class NouvelleAffaireDialog extends JDialog {
                 }
             }
 
-            // Si l'utilisateur n'est pas trouvé, on bloque l'enregistrement par sécurité
             if (utilisateurId == -1) {
                 JOptionPane.showMessageDialog(this, "Erreur : Impossible d'identifier l'utilisateur connecté dans la base de données.", "Erreur d'authentification", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            // 2. Insérer l'affaire avec l'ID de l'utilisateur (entier) dans 'cree_par'
+            // 2. Insérer l'affaire
             String queryAffaire = "INSERT INTO affaires (numero_affaire, statut, description, cree_par) VALUES (?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(queryAffaire)) {
                 pstmt.setString(1, numAffaire);
@@ -181,8 +181,8 @@ public class NouvelleAffaireDialog extends JDialog {
                 pstmt.executeUpdate();
             }
 
-            // 3. Insérer le requérant initial dans la table 'opposants' si des champs sont remplis
-            if (!commune.isEmpty() || !section.isEmpty() || !parcelle.isEmpty()) {
+            // 3. Insérer le requérant initial dans la table 'opposants' avec la ville et le lieu-dit
+            if (!commune.isEmpty() || !lieuDit.isEmpty() || !section.isEmpty() || !parcelle.isEmpty()) {
                 String getIdAffaire = "SELECT id FROM affaires WHERE numero_affaire = ?";
                 int affaireId = -1;
                 try (PreparedStatement pstmtId = conn.prepareStatement(getIdAffaire)) {
@@ -195,16 +195,15 @@ public class NouvelleAffaireDialog extends JDialog {
                 }
 
                 if (affaireId != -1) {
-                    // Note: Dans votre structure SQL, la colonne 'cree_par' de 'opposants' est de type VARCHAR. 
-                    // Vous pouvez y insérer le nom ou l'ID sous forme de texte selon votre préférence.
-                    String queryOpposantInitial = "INSERT INTO opposants (affaire_id, ville, section, parcelle, nom_prenom_ou_raison_sociale, cree_par) VALUES (?, ?, ?, ?, ?, ?)";
+                    String queryOpposantInitial = "INSERT INTO opposants (affaire_id, ville, lieu_dit, section, parcelle, nom_prenom_ou_raison_sociale, cree_par) VALUES (?, ?, ?, ?, ?, ?, ?)";
                     try (PreparedStatement pstmtOpp = conn.prepareStatement(queryOpposantInitial)) {
                         pstmtOpp.setInt(1, affaireId);
                         pstmtOpp.setString(2, commune);
-                        pstmtOpp.setString(3, section);
-                        pstmtOpp.setString(4, parcelle);
-                        pstmtOpp.setString(5, "Dossier Principal / Requérant initial");
-                        pstmtOpp.setString(6, nomUtilisateurConnecte);
+                        pstmtOpp.setString(3, lieuDit.isEmpty() ? null : lieuDit);
+                        pstmtOpp.setString(4, section);
+                        pstmtOpp.setString(5, parcelle);
+                        pstmtOpp.setString(6, "Dossier Principal / Requérant initial");
+                        pstmtOpp.setString(7, nomUtilisateurConnecte);
                         pstmtOpp.executeUpdate();
                     }
                 }
