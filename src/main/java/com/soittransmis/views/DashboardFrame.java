@@ -1,5 +1,7 @@
 package com.soittransmis.views;
 
+import com.soittransmis.dao.AffaireDAO;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -16,12 +18,9 @@ public class DashboardFrame extends JFrame {
     
     private JTextField txtRecherche;
     private JComboBox<String> comboStatutFiltre;
-
-    // Paramètres de connexion à votre base de données PostgreSQL
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/soit_transmis_db";
-    private static final String DB_USER = "postgres";                                    
-    private static final String DB_PASSWORD = "postgres"; 
     
+    private final AffaireDAO affaireDAO = new AffaireDAO();
+
     public DashboardFrame() {
         this("Utilisateur", "Agent");
     }
@@ -116,7 +115,7 @@ public class DashboardFrame extends JFrame {
             NouvelleAffaireDialog dialogAffaire = new NouvelleAffaireDialog(this);
             dialogAffaire.setVisible(true);
             if (dialogAffaire.isSaved()) {
-                chargerDonneesAffaires(); // Actualisation automatique après l'ajout
+                chargerDonneesAffaires();
             }
         });
 
@@ -147,10 +146,8 @@ public class DashboardFrame extends JFrame {
 
         add(mainPanel);
 
-        // Chargement initial des données de la base
         chargerDonneesAffaires();
 
-        // Écouteurs pour la recherche dynamique
         txtRecherche.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
@@ -172,9 +169,6 @@ public class DashboardFrame extends JFrame {
         }
     }
 
-    /**
-     * Interroge la base de données PostgreSQL pour récupérer les affaires et leurs opposants associés.
-     */
     private void chargerDonneesAffaires() {
         containerAffaires.removeAll();
 
@@ -208,7 +202,7 @@ public class DashboardFrame extends JFrame {
 
         query += " GROUP BY a.numero_affaire, a.statut, a.cree_le ORDER BY a.numero_affaire DESC";
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        try (Connection conn = affaireDAO.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
             int paramIndex = 1;
@@ -285,7 +279,6 @@ public class DashboardFrame extends JFrame {
         ));
         cardPanel.setBackground(Color.WHITE);
 
-        // 1. En-tête (Barre bleue)
         JPanel headerPanel = new JPanel(new GridLayout(1, 6, 15, 0));
         headerPanel.setBackground(new Color(24, 43, 73)); 
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
@@ -307,7 +300,6 @@ public class DashboardFrame extends JFrame {
         headerPanel.add(affaireActionPanel);
         cardPanel.add(headerPanel, BorderLayout.NORTH);
 
-        // 2. Corps : Panneaux des Opposants (avec un wrapper BorderLayout.NORTH pour bloquer l'étirement vertical)
         JPanel bodyPanel = new JPanel(new GridLayout(1, 2, 25, 0));
         bodyPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         bodyPanel.setBackground(Color.WHITE);
@@ -437,7 +429,7 @@ public class DashboardFrame extends JFrame {
                        "JOIN affaires a ON d.affaire_id = a.id " +
                        "WHERE a.numero_affaire = ? AND d.opposant_id IS NULL";
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        try (Connection conn = affaireDAO.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setString(1, numeroAffaire);
@@ -495,7 +487,7 @@ public class DashboardFrame extends JFrame {
             }
 
             int nbSucces = 0;
-            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            try (Connection conn = affaireDAO.getConnection()) {
                 for (File fichierSource : fichiersSources) {
                     File fichierDestination = new File(dossierCible, fichierSource.getName());
                     java.nio.file.Files.copy(fichierSource.toPath(), fichierDestination.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
