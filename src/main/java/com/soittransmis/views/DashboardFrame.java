@@ -223,6 +223,7 @@ public class DashboardFrame extends JFrame {
                 while (rs.next()) {
                     hasResults = true;
                     String numAffaire = rs.getString("numero_affaire");
+                    String statut = rs.getString("statut");
                     String commune = rs.getString("commune");
                     String section = rs.getString("section");
                     String parcelle = rs.getString("parcelle");
@@ -238,7 +239,7 @@ public class DashboardFrame extends JFrame {
                     String contactOpp2 = rs.getString("contact_opp2");
 
                     JPanel card = createAffaireCard(numAffaire, commune, section, parcelle, lieuDit, date,
-                            nomOpp1, refOpp1, contactOpp1, nomOpp2, refOpp2, contactOpp2);
+                            nomOpp1, refOpp1, contactOpp1, nomOpp2, refOpp2, contactOpp2, statut);
                     
                     containerAffaires.add(card);
                     containerAffaires.add(Box.createVerticalStrut(20));
@@ -270,7 +271,8 @@ public class DashboardFrame extends JFrame {
     private JPanel createAffaireCard(String numAffaire, String commune, String section, String parcelle, 
                                      String lieuDit, String date, 
                                      String nomOpp1, String refOpp1, String contactOpp1, 
-                                     String nomOpp2, String refOpp2, String contactOpp2) {
+                                     String nomOpp2, String refOpp2, String contactOpp2, 
+                                     String statut) {
         
         JPanel cardPanel = new JPanel(new BorderLayout());
         cardPanel.setBorder(BorderFactory.createCompoundBorder(
@@ -280,7 +282,14 @@ public class DashboardFrame extends JFrame {
         cardPanel.setBackground(Color.WHITE);
 
         JPanel headerPanel = new JPanel(new GridLayout(1, 6, 15, 0));
-        headerPanel.setBackground(new Color(24, 43, 73)); 
+        
+        // Attribution de la couleur d'arrière-plan selon le statut
+        if ("Traité et classé".equalsIgnoreCase(statut)) {
+            headerPanel.setBackground(new Color(40, 167, 69)); // Vert moderne
+        } else {
+            headerPanel.setBackground(new Color(220, 53, 69)); // Rouge moderne
+        }
+        
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
         headerPanel.add(createHeaderColumn("Commune", commune));
@@ -327,7 +336,7 @@ public class DashboardFrame extends JFrame {
         col.setOpaque(false);
         
         JLabel lblTitle = new JLabel(title);
-        lblTitle.setForeground(new Color(180, 195, 210));
+        lblTitle.setForeground(new Color(230, 240, 250));
         lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
         JLabel lblValue = new JLabel(value != null && !value.isEmpty() ? value : "-");
